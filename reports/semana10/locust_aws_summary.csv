@@ -1,0 +1,10 @@
+metric,value,unit
+requests,2305,requests
+failures,0,requests
+error_rate,0,percent
+throughput,38.52,requests_per_second
+average_latency,6,milliseconds
+median_latency,5,milliseconds
+p95_latency,11,milliseconds
+p99_latency,17,milliseconds
+maximum_latency,29,milliseconds

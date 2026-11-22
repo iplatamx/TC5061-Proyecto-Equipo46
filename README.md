@@ -1337,76 +1337,34 @@ Para Continuous Training se propone una estrategia supervisada, condicionada a e
 
 ## Semana 10 — Microservicios, CI/CD y FinOps
 
-Esta etapa levanta la API y MLflow con Docker Compose, valida el proyecto con GitHub Actions y permite ejecutar una carga reproducible con Locust.
+La evidencia y las mediciones de esta sección corresponden al despliegue en AWS, región US East (Ohio), us-east-2. La guía [deploy/aws/README.md](deploy/aws/README.md) explica cómo crear y retirar el stack de CloudFormation.
 
-### Docker Compose
+### Docker Compose en AWS
 
-Requisitos: Docker Desktop con el motor activo y Docker Compose v2. Desde la raíz del repositorio:
+CloudFormation crea una instancia EC2 m7i-flex.large con un volumen cifrado, un bucket S3 privado y un rol limitado para Systems Manager y S3. La instancia usa Docker Compose para levantar la API de predicción y MLflow. El grupo de seguridad no abre puertos entrantes; la verificación y la carga se ejecutan mediante AWS Systems Manager Session Manager.
 
-~~~powershell
-docker compose up -d --build
-docker compose ps
-Invoke-RestMethod http://localhost:8000/health
-Invoke-RestMethod http://localhost:8000/model-info
-~~~
-
-La API queda en http://localhost:8000; MLflow, en http://localhost:5000. El servicio de inicialización registra P1 v1 y v2 y asigna champion a v1. Por defecto, usa los artefactos existentes en ../semana-07/mlruns/2/models, como se describe en este README. Si están en otra ruta, configura MIBICI_LEGACY_MODELS_DIR antes de levantar Compose. Ejemplo:
-
-~~~powershell
-$env:MIBICI_LEGACY_MODELS_DIR = "C:/ruta/mlruns/2/models"
-~~~
-
-El directorio .mlflow-data/ conserva la base y artefactos creados por el stack. Para detener los contenedores sin borrar esos datos:
-
-~~~powershell
-docker compose down
-~~~
+Consulta [la guía de despliegue AWS](deploy/aws/README.md) para crear el stack, subir los paquetes del proyecto a S3 y verificar la salud de API y MLflow.
 
 ### CI/CD con GitHub Actions
 
-El workflow .github/workflows/ci.yml se ejecuta en cada push y pull_request. Instala Python 3.11 y las dependencias, ejecuta python -m pytest tests/ -q y, si las pruebas pasan, construye la imagen mibici-equipo46-api:ci con el Containerfile. Para activar el workflow remoto, sube la rama al repositorio de GitHub o abre un pull request.
+El workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) corre en push y pull request: instala Python, ejecuta PyTest y construye la imagen OCI del servicio. La ejecución de GitHub Actions para esta rama terminó correctamente: [consultar resultado del workflow](https://github.com/iplatamx/TC5061-Proyecto-Equipo46/actions/runs/45049426702).
 
-Los mismos pasos se pueden ejecutar localmente desde la raíz:
+### Prueba de carga y monitoreo en AWS
 
-~~~powershell
-python -m pip install -r requirements.txt pytest==9.2.0
-python -m pip install -e .
-python -m pytest tests/ -q
-docker build --file Containerfile --tag mibici-equipo46-api:ci .
+Desde la instancia abierta en Session Manager, se ejecuta:
+
+~~~bash
+sudo bash /opt/tc5061/semana-10/deploy/aws/run_loadtest.sh
 ~~~
 
-### Locust y reporte de carga
+El script inicia el escenario Locust configurado con 20 usuarios, llegada de 5 usuarios por segundo y un minuto de carga. Envía POST a /predict y toma muestras de CPU y memoria de API y MLflow. El reporte HTML y los CSV se guardan en S3 en el prefijo privado reports/semana10/.
 
-Con API y MLflow activos, ejecuta el perfil opcional de Locust:
+La corrida del 22 de noviembre de 2026 completó **2,305 solicitudes, cero fallos, 38.52 solicitudes/s, promedio de 6 ms, p95 de 11 ms y p99 de 17 ms**. En 13 muestras de contenedores, API promedió 14.47 % de CPU y 183.1 MiB de memoria; MLflow promedió 1.39 % de CPU y 628.0 MiB de memoria.
 
-~~~powershell
-docker compose --profile loadtest run --rm locust
-~~~
+![Resultados de latencia, throughput y errores medidos en AWS](reports/semana10/figures/aws_loadtest_performance.svg)
 
-El escenario predeterminado usa 20 usuarios, una tasa de llegada de 5 usuarios por segundo y 1 minuto de carga. Cada petición envía datos sintéticos que cumplen el contrato de POST /predict. Puedes ajustar LOCUST_USERS, LOCUST_SPAWN_RATE y LOCUST_RUN_TIME en la terminal antes del comando.
+![Consumo de CPU y memoria medido en los contenedores de AWS](reports/semana10/figures/aws_resource_usage.svg)
 
-Locust guarda reports/semana10/locust_report.html con gráficas de latencia, throughput y fallos, además de CSV con el resumen y la serie temporal.
+### FinOps
 
-### Consumo de CPU y memoria
-
-Abre dos terminales desde la raíz del proyecto. En la primera, inicia la captura:
-
-~~~powershell
-.\scripts\monitor_compose_stats.ps1 -DurationSeconds 90 -IntervalSeconds 2
-~~~
-
-En la segunda, ejecuta Locust mientras se toman las muestras:
-
-~~~powershell
-docker compose --profile loadtest run --rm locust
-~~~
-
-La captura se guarda en reports/semana10/docker_stats.csv. docker stats mide los contenedores de la API y MLflow.
-
-### Resultados y análisis FinOps
-
-El reporte reports/semana10/analisis_finops.md documenta el escenario medido, las métricas, las gráficas HTML, la captura de recursos y la estimación de costo por inferencia. Los valores de nube son una referencia calculada a partir del throughput local y deben validarse en la infraestructura elegida.
-
-### Despliegue temporal en AWS
-
-La guía [deploy/aws/README.md](deploy/aws/README.md) prepara el despliegue en una instancia EC2 `t3.medium` en `us-east-2`, con los modelos en un bucket S3 privado. La plantilla administra la instancia con Systems Manager y deja cerrados los puertos entrantes de la API y MLflow. El presupuesto de referencia es MXN $30 por un día; al terminar, descarga los reportes y elimina el stack para detener los cargos.
+El análisis [reports/semana10/analisis_finops.md](reports/semana10/analisis_finops.md) calcula el costo con el tipo de instancia, almacenamiento, IPv4 y throughput observados en AWS. La referencia base es **MXN $47.53 por 24 horas** de stack encendido y **MXN $14.28 por millón de inferencias** al throughput medido; los supuestos, límites y optimizaciones se documentan en el análisis.

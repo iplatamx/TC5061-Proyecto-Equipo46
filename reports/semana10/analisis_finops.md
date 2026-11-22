@@ -1,76 +1,76 @@
-# Semana 10 — Prueba de carga y análisis FinOps
+# Semana 10 — Resultados AWS y análisis FinOps
 
-## Escenario
+## Alcance del despliegue
 
-- Fecha: 22 de noviembre de 2026.
-- Locust 2.47.0, ejecutado como contenedor del perfil loadtest.
-- 20 usuarios concurrentes, 5 usuarios nuevos por segundo y 60 segundos de carga.
-- Cada usuario envía POST /predict con las ocho variables del contrato P1 y espera entre 0.2 y 0.8 segundos.
-- API y MLflow se ejecutaron con Docker Compose en Docker Desktop. El generador Locust compartió el mismo host Docker, por lo que los resultados describen este entorno local.
+La prueba se ejecutó el 22 de noviembre de 2026 en AWS, región US East (Ohio), **us-east-2**. CloudFormation aprovisionó una instancia EC2 **m7i-flex.large** (2 vCPU y 8 GiB de memoria), volumen cifrado EBS gp3 de 30 GiB y bucket S3 privado. Docker Compose levantó la API de predicción y MLflow; el acceso administrativo se realizó con Systems Manager Session Manager y el grupo de seguridad no abrió puertos de entrada. Locust se ejecutó como contenedor en la misma instancia.
 
-## Desempeño
+## Escenario y resultados de Locust
 
-El [reporte HTML de Locust](locust_report.html) incluye gráficas de tiempo de respuesta, peticiones por segundo y fallos. Los CSV se conservan como datos complementarios.
+- Locust 2.47.0; 20 usuarios, llegada de 5 usuarios por segundo y duración configurada de 1 minuto.
+- Cada usuario envió solicitudes POST a /predict con datos válidos del contrato P1 y esperó entre 0.2 y 0.8 segundos.
+- Resultado final: **2,305 solicitudes y cero fallos**.
 
-| Métrica | Resultado del resumen HTML |
+| Métrica AWS | Resultado |
 |---|---:|
-| Peticiones | 2,096 |
-| Errores | 0 (0 %) |
-| Latencia promedio | 41.82 ms |
-| Mediana | 34 ms |
-| Latencia p95 | 79 ms |
-| Latencia máxima | 2,037 ms |
-| Throughput | 32.30 req/s |
+| Solicitudes completadas | 2,305 |
+| Fallos / tasa de error | 0 / 0.00 % |
+| Throughput | 38.52 solicitudes/s |
+| Latencia promedio | 6 ms |
+| Mediana | 5 ms |
+| p95 | 11 ms |
+| p99 | 17 ms |
+| Máximo | 29 ms |
 
-Se observó una latencia máxima aislada de aproximadamente 2.04 s; por eso el p95 (79 ms) es más representativo del comportamiento habitual que el máximo.
+![Gráfica de latencia, throughput y errores de Locust en AWS](figures/aws_loadtest_performance.svg)
 
-**Diferencia entre archivos:** el resumen final del HTML registra 2,096 peticiones, mientras que el resumen y la última muestra del CSV de Locust registran 2,082, ambos con cero fallos. Se usa el resumen HTML como fuente del conteo final y del throughput; se conserva el CSV como serie temporal, dejando documentada la diferencia de 14 peticiones (0.67 %).
+La distribución de latencia se mantuvo baja durante esta ejecución: el 95 % de las respuestas quedó en 11 ms o menos y no hubo errores reportados. El máximo de 29 ms fue cercano a la cola alta de la distribución. Estos resultados describen una sola prueba breve; no demuestran por sí solos la capacidad máxima sostenida ni la disponibilidad del servicio a largo plazo. Como Locust y la API compartieron EC2, el throughput también depende de los recursos que consumió el generador.
 
-## Consumo de recursos
+## CPU y memoria observadas en AWS
 
-La captura de [docker_stats.csv](docker_stats.csv) contiene 11 muestras por contenedor durante la ventana de carga.
+El script tomó 13 muestras por servicio entre 18:06:14 y 18:07:21 UTC. El límite de memoria mostrado por Docker fue 7.597 GiB.
 
-| Contenedor | CPU promedio | CPU máxima | Memoria promedio | Memoria máxima |
+| Servicio | CPU promedio | CPU máxima | Memoria promedio | Memoria máxima |
 |---|---:|---:|---:|---:|
-| API | 125.11 % | 172.16 % | 261.7 MiB | 273.7 MiB |
-| MLflow | 0.98 % | 1.09 % | 657.4 MiB | 657.5 MiB |
+| API | 14.47 % | 36.88 % | 183.1 MiB | 183.4 MiB |
+| MLflow | 1.39 % | 8.01 % | 628.0 MiB | 628.1 MiB |
 
-Docker reporta CPU por contenedor y el porcentaje puede superar 100 % cuando el proceso usa más de un núcleo. La API fue la parte intensiva en CPU durante esta prueba; MLflow mantuvo principalmente el registro y sirvió artefactos al iniciar la API.
+![Gráfica de CPU y memoria de los contenedores en AWS](figures/aws_resource_usage.svg)
+
+API fue el contenedor con mayor uso de CPU; MLflow mantuvo el uso bajo y estable. En estas muestras, API y MLflow usaron alrededor de 812 MiB de memoria combinada, cerca del 10.7 % del límite que Docker reportó. Esto sugiere margen para evaluar una instancia menor, pero debe confirmarse con pruebas repetidas y con Locust en un host separado si se busca medir la capacidad de la API sin el generador.
 
 ## Estimación FinOps
 
-Como referencia se usa una instancia AWS EC2 c6i.xlarge bajo demanda en us-east-1: 4 vCPU, 8 GiB de memoria y USD $0.17 por hora, según [AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/optimize-costs-microsoft-workloads/right-size-selection.html).
+La estimación usa tarifas de referencia bajo demanda para us-east-2, sin descuentos, impuestos ni créditos aplicados a la cuenta:
 
-Con el throughput del resumen HTML:
+| Componente | Precio de referencia |
+|---|---:|
+| EC2 m7i-flex.large | USD $0.0958/h |
+| IPv4 pública en uso | USD $0.0050/h |
+| EBS gp3 de 30 GiB | USD $2.40/mes (USD $0.00329/h prorrateado) |
+| **Total base estimado** | **USD $0.10409/h** |
 
-- Inferencias teóricas por hora: 32.2999 req/s × 3,600 = **116,280**.
-- Costo estimado: USD $0.17 ÷ 116,280 = **USD $0.00000146 por inferencia**.
-- Equivalente: aproximadamente **USD $1.46 por millón de inferencias**.
-- Si la instancia permanece encendida 730 horas al mes: **USD $124.10/mes**, antes de almacenamiento, transferencia, impuestos y otros servicios.
+Con el tipo de cambio de **MXN $19.027 por USD** publicado el 20 de noviembre de 2026, el costo base estimado es aproximadamente **MXN $47.53 por 24 horas** o **MXN $1,445.75 por 730 horas**. Con un margen presupuestario de 16 %, conviene presupuestar cerca de MXN $55.14 por día o MXN $1,677.07 por mes continuo. La tarifa mensual prorratea los 30 GiB de EBS y considera una instancia activa todo el tiempo.
 
-Es una estimación ilustrativa: supone que una instancia c6i.xlarge sostendría el throughput medido localmente. No se ejecutó una prueba en AWS, así que no se debe interpretar como una cotización ni como capacidad garantizada. El costo fijo mensual domina con tráfico bajo; con carga sostenida, el costo unitario depende directamente del throughput real.
+A 38.52 solicitudes/s, el throughput medido equivale a 138,672 inferencias por hora. Dividir el costo base horario entre ese volumen produce un costo estimado de **USD $0.000000751 por inferencia**, equivalente a **USD $0.75 o MXN $14.28 por millón de inferencias**. Esta cifra supone que el throughput observado se mantiene durante toda la hora y distribuye los costos fijos de la instancia, IPv4 y disco entre esas inferencias.
 
-## Acciones de optimización
+El cálculo no es el total facturado del ejercicio: el tiempo real que la instancia permaneció aprovisionada, S3, transferencia de datos e impuestos pueden modificar la cuenta. La factura y Cost Explorer son la fuente para conocer el importe efectivamente cobrado.
 
-1. Ajustar CPU, memoria y número de procesos a partir de pruebas repetidas en la instancia de destino; no dimensionar la nube solo con la medición de Docker Desktop.
-2. Escalar réplicas de API durante picos y reducirlas en periodos de poco tráfico; revisar el punto de equilibrio frente a una instancia fija 24/7.
-3. Mantener el modelo en memoria en FastAPI, como hace esta implementación, para evitar consultar el Registry en cada predicción.
-4. Probar el generador de carga desde otro host para separar el consumo de Locust del consumo del servicio.
-5. Comparar procesamiento por lotes y alternativas de CPU solo después de validar la misma calidad del modelo y el contrato P1.
+### Optimizaciones propuestas
 
-## Archivos de evidencia
+1. Eliminar el stack de CloudFormation al terminar la práctica, después de descargar los artefactos, para detener EC2 y borrar el volumen asociado.
+2. Repetir la prueba en AWS con Locust en otro host y con varios niveles de concurrencia; comparar throughput, percentiles y errores antes de cambiar el tamaño de EC2.
+3. Si las repeticiones confirman margen de CPU y memoria, probar una instancia menor y comparar su costo por millón de inferencias con la misma carga.
+4. Mantener la expiración corta de los objetos S3 y revisar el volumen de reportes almacenado.
+5. Para tráfico variable de producción, evaluar escalamiento de réplicas y horarios de apagado; evitar pagar una instancia continua cuando no hay solicitudes.
 
-- [Gráficas y resumen HTML](locust_report.html)
-- [Resumen CSV de Locust](locust_stats_stats.csv)
-- [Serie temporal CSV de Locust](locust_stats_stats_history.csv)
-- [Muestras CPU/memoria](docker_stats.csv)
+## Evidencias AWS
 
-## Estimación para el despliegue AWS de la rama `...-aws`
+- [Resumen gráfico HTML](locust_report.html)
+- [Resumen final CSV de Locust](locust_stats_stats.csv)
+- [Métricas de carga usadas para las gráficas](locust_aws_summary.csv)
+- [Muestras de CPU/memoria tomadas en EC2](docker_stats_aws.csv)
+- [Gráfica de desempeño](figures/aws_loadtest_performance.svg)
+- [Gráfica de recursos](figures/aws_resource_usage.svg)
+- El reporte nativo de Locust y las series originales también se cargaron en el prefijo privado s3://semana10-microservicios-cicd-finops-artifactbucket-rdwpcgmqktm0/reports/semana10/.
 
-La propuesta de despliegue temporal usa una instancia EC2 `t3.medium` (2 vCPU, 4 GiB), un volumen cifrado gp3 de 30 GiB y una IPv4 pública. API y MLflow no aceptan conexiones entrantes desde Internet; S3 guarda los paquetes privados y expira los objetos después de dos días.
-
-Con los precios de referencia de USD $0.0418/h para `t3.medium`, USD $0.005/h por IPv4 y USD $0.08/GiB-mes para gp3, el costo aproximado de un día es USD $1.20, o MXN $22.89 antes de impuestos. Con un margen de 16 %: **MXN $26.55**, por lo que conviene presupuestar **MXN $30 por un día**. Para 730 horas continuas el cálculo es USD $36.56 / MXN $695.70 antes de impuestos, o aproximadamente **MXN $807 con el mismo margen**.
-
-Usando el throughput medido localmente (32.2999 req/s), el costo fijo de cómputo estimado equivale a cerca de **MXN $6.84 por millón de inferencias**, antes de considerar créditos T3, almacenamiento adicional, transferencia o impuestos. Esta extrapolación no es una medición de AWS: se validará el throughput real después del despliegue. El precio T3 publicado es una referencia de lista y debe confirmarse para `us-east-2` antes del lanzamiento. T3 es burstable; una carga alta sostenida puede consumir créditos de CPU adicionales.
-
-Fuentes: [EC2 T3](https://aws.amazon.com/ec2/instance-types/t3/), [IPv4 de AWS](https://aws.amazon.com/vpc/pricing/), [EBS gp3](https://aws.amazon.com/ebs/pricing/), [tipo de cambio DOF al 20/11/2026](https://dof.gob.mx/indicadores_detalle.php?cod_tipo_indicador=158&dfecha=20%2F11%2F2026&hfecha=20%2F11%2F2026).
+**Referencias de precios:** [AWS EC2 On-Demand](https://aws.amazon.com/ec2/pricing/on-demand/), [precio de IPv4 pública](https://aws.amazon.com/vpc/pricing/), [precio de EBS gp3](https://aws.amazon.com/ebs/pricing/) y [tipo de cambio DOF/Banxico](https://www.banxico.org.mx/tipcamb/tipCamMIAction.do). Los precios pueden cambiar; la consola de AWS Pricing Calculator permite recalcularlos antes de una nueva ejecución.

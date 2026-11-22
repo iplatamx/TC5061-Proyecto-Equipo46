@@ -4,7 +4,7 @@ Esta guía despliega el stack existente de Docker Compose en una instancia EC2 d
 
 ## Recursos que crea la plantilla
 
-- Una instancia EC2 Linux `t3.medium` (2 vCPU, 4 GiB RAM).
+- Una instancia EC2 Linux `m7i-flex.large` (2 vCPU, 8 GiB RAM).
 - Un volumen EBS gp3 cifrado de 30 GiB, que se elimina al terminar la instancia.
 - Una IPv4 pública para que la instancia descargue imágenes y paquetes; el grupo de seguridad no permite tráfico entrante.
 - Un bucket S3 privado para los dos paquetes y los reportes de Locust. Los objetos vencen en dos días.
@@ -31,7 +31,7 @@ C:\IVAN\MNA\TC5061\semana-10\deploy\aws\package_aws.ps1 -ModelDirectory "C:\ruta
 1. En AWS Console, selecciona **US East (Ohio), `us-east-2`**.
 2. Abre **CloudFormation → Create stack → With new resources (standard)**.
 3. Carga `deploy/aws/stack.yaml` como plantilla.
-4. Selecciona el VPC predeterminado y una subred pública dentro de ese VPC. Mantén `t3.medium`.
+4. Selecciona el VPC predeterminado y una subred pública dentro de ese VPC. Mantén `m7i-flex.large`.
 5. Revisa la plantilla y crea el stack. La instancia empezará a generar cargos cuando quede en estado `CREATE_COMPLETE`.
 6. En **Outputs**, copia `ArtifactBucketName`. En **S3**, abre ese bucket privado y sube ambos ZIP al prefijo `week10/`:
    - `week10/source.zip`
@@ -59,18 +59,20 @@ sudo bash /opt/tc5061/semana-10/deploy/aws/run_loadtest.sh
 
 El script genera el reporte HTML/CSV y muestrea `docker stats` para API y MLflow cada dos segundos. Después sube los resultados al prefijo privado `reports/semana10/` del mismo bucket; puedes descargarlos desde la consola S3.
 
-## Costos de referencia y apagado
+## Resultados y costos de referencia AWS
 
-El tamaño se ajustó a la medición local: los contenedores de API y MLflow consumieron cerca de 920 MiB combinados y la API promedió 125 % de CPU durante una prueba breve. `t3.medium` tiene 2 vCPU y 4 GiB; sus créditos de CPU pueden generar un cargo adicional si se mantiene uso alto durante mucho tiempo.
+La ejecución del 22 de noviembre de 2026 en us-east-2 usó 20 usuarios de Locust, 5 usuarios nuevos por segundo y una duración de un minuto. El resultado final fue 2,305 solicitudes a /predict, cero fallos, throughput de 38.52 solicitudes/s, promedio de 6 ms, p95 de 11 ms y p99 de 17 ms. El reporte completo y las gráficas están en [reports/semana10/analisis_finops.md](../../reports/semana10/analisis_finops.md).
 
-Con las tarifas de referencia de **USD $0.0418/h** para `t3.medium`, **USD $0.005/h** por IPv4 pública y **USD $0.08/GiB-mes** para gp3, el cálculo aproximado es:
+Durante 13 muestras tomadas en EC2, la API promedió 14.47 % de CPU y 183.1 MiB de memoria (máximo 36.88 % y 183.4 MiB); MLflow promedió 1.39 % de CPU y 628.0 MiB (máximo 8.01 % y 628.1 MiB).
 
-| Tiempo encendido | Antes de impuestos | Con margen de 16 % |
+La estimación usa como referencia USD $0.0958/h para EC2 m7i-flex.large en us-east-2, USD $0.005/h por IPv4 pública en uso y USD $0.08/GiB-mes para gp3. Con un disco de 30 GiB, el costo base aproximado es USD $0.10409/h:
+
+| Tiempo encendido | Costo base | Presupuesto con margen de 16 % |
 |---|---:|---:|
-| 24 horas | MXN $23 | MXN $27 (presupuesta $30) |
-| 730 horas | MXN $696 | MXN $807 (presupuesta $850) |
+| 24 horas | MXN $47.53 | MXN $55.14 |
+| 730 horas | MXN $1,445.75 | MXN $1,677.07 |
 
-La conversión usa MXN $19.027/USD (DOF, 20 de noviembre de 2026). Es una referencia con precios de lista; la región, impuestos, créditos de CPU y uso de red pueden cambiar la factura. [Tarifa EC2 T3](https://aws.amazon.com/ec2/instance-types/t3/), [precio de IPv4](https://aws.amazon.com/vpc/pricing/), [precio gp3](https://aws.amazon.com/ebs/pricing/), [tipo de cambio DOF](https://dof.gob.mx/indicadores_detalle.php?cod_tipo_indicador=158&dfecha=20%2F11%2F2026&hfecha=20%2F11%2F2026).
+La conversión usa MXN $19.027/USD, publicado por DOF/Banxico el 20 de noviembre de 2026. Al throughput observado, el costo estimado es USD $0.75 (MXN $14.28) por millón de inferencias, distribuyendo EC2, IPv4 y EBS entre 138,672 inferencias por hora. Es una proyección de capacidad sostenida, no el importe facturado del ejercicio. No incluye impuestos, S3, transferencia de datos ni descuentos de cuenta. Revisa el importe real en Cost Explorer. Referencias: [AWS EC2 On-Demand](https://aws.amazon.com/ec2/pricing/on-demand/), [precio de IPv4](https://aws.amazon.com/vpc/pricing/), [precio gp3](https://aws.amazon.com/ebs/pricing/) y [tipo de cambio DOF/Banxico](https://www.banxico.org.mx/tipcamb/tipCamMIAction.do).
 
 Al terminar:
 
