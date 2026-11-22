@@ -15,7 +15,7 @@ Parameters:
     Description: Existing GitHub OIDC provider ARN, or leave empty to create the account-level provider.
   GitHubSubject:
     Type: String
-    Default: repo:iplatamx/TC5061-Proyecto-Equipo46:ref:refs/heads/feature/semana10-microservicios-cicd-finops-aws
+    Default: repo:iplatamx@75330330/TC5061-Proyecto-Equipo46@1432883713:ref:refs/heads/feature/semana10-microservicios-cicd-finops-aws
     Description: Exact GitHub OIDC subject allowed to assume this role.
 
 Conditions:

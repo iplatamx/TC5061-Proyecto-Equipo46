@@ -52,7 +52,7 @@ El workflow ejecuta pruebas y construye la imagen en cada push y pull request. S
    - AWS_INSTANCE_ID: valor de InstanceId del stack Semana 10.
 4. Haz push a feature/semana10-microservicios-cicd-finops-aws. Tras pasar las pruebas y construir la imagen, Actions sube source.zip y api-image.tar a week10/deploy/<commit>/ en S3, envía el despliegue por Systems Manager y comprueba la salud de API y MLflow. El stack EC2 debe seguir activo y administrado por Systems Manager.
 
-El rol de GitHub queda limitado al subject OIDC de este repositorio y rama, al prefijo week10/deploy/ del bucket y a la instancia con etiqueta Project=TC5061-Semana10. La instancia descarga los paquetes con su propio rol, ya limitado al prefijo week10/. Si el repositorio usa subjects OIDC inmutables, ajusta el parámetro GitHubSubject al subject que emite GitHub para ese repositorio.
+El rol de GitHub queda limitado al subject OIDC de este repositorio y rama, al prefijo week10/deploy/ del bucket y a la instancia con etiqueta Project=TC5061-Semana10. La instancia descarga los paquetes con su propio rol, ya limitado al prefijo week10/. El valor predeterminado de GitHubSubject incluye los IDs inmutables que GitHub emite para este repositorio. Si reutilizas la plantilla para otro repositorio, reemplázalo por el subject exacto de su rama de despliegue.
 
 Si deploy-aws aparece como omitido, revisa que las cuatro variables anteriores estén definidas. Los pull requests y los pushes a otras ramas no actualizan la instancia.
 
