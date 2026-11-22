@@ -15,8 +15,8 @@ if (-not (Test-Path -LiteralPath $ModelDirectory -PathType Container)) {
 
 $branchName = (git -C $repoRoot branch --show-current).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'No pude identificar la rama actual.' }
-if ($branchName -ne 'semana10-microservicios-cicd-finops-aws') {
-    throw "Cambia a semana10-microservicios-cicd-finops-aws antes de empaquetar. Rama actual: $branchName"
+if ($branchName -ne 'feature/semana10-microservicios-cicd-finops-aws') {
+    throw "Cambia a feature/semana10-microservicios-cicd-finops-aws antes de empaquetar. Rama actual: $branchName"
 }
 
 $packageDirectory = Join-Path $env:TEMP ('semana10-aws-' + [guid]::NewGuid().ToString('N'))

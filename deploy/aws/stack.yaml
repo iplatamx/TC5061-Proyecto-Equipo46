@@ -188,7 +188,7 @@ Resources:
             systemctl enable --now week10-deploy.timer
       Tags:
         - Key: Name
-          Value: semana10-microservicios-cicd-finops-aws
+          Value: feature/semana10-microservicios-cicd-finops-aws
         - Key: Project
           Value: TC5061-Semana10
 
