@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD Semana 10
 
 on:
   push:
@@ -40,5 +40,108 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Build API image
-        run: docker build --file Containerfile --tag mibici-equipo46-api:ci .
+        env:
+          IMAGE_TAG: mibici-equipo46-api:${{ github.sha }}
+        run: docker build --file Containerfile --tag "$IMAGE_TAG" .
 
+      - name: Package AWS deployment bundle
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/semana10-microservicios-cicd-finops-aws'
+        env:
+          IMAGE_TAG: mibici-equipo46-api:${{ github.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/week10-deploy"
+          git archive --format=zip --output="$RUNNER_TEMP/week10-deploy/source.zip" "$GITHUB_SHA"
+          docker save --output="$RUNNER_TEMP/week10-deploy/api-image.tar" "$IMAGE_TAG"
+
+      - name: Upload deployment bundle
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/semana10-microservicios-cicd-finops-aws'
+        uses: actions/upload-artifact@v4
+        with:
+          name: week10-deploy-${{ github.sha }}
+          path: ${{ runner.temp }}/week10-deploy/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  deploy-aws:
+    name: Deploy to AWS through Systems Manager
+    runs-on: ubuntu-latest
+    needs: build-image
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/feature/semana10-microservicios-cicd-finops-aws' &&
+      vars.AWS_DEPLOY_ROLE_ARN != '' &&
+      vars.AWS_ARTIFACT_BUCKET != '' &&
+      vars.AWS_INSTANCE_ID != ''
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
+      AWS_ARTIFACT_BUCKET: ${{ vars.AWS_ARTIFACT_BUCKET }}
+      AWS_INSTANCE_ID: ${{ vars.AWS_INSTANCE_ID }}
+    steps:
+      - name: Download deployment bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: week10-deploy-${{ github.sha }}
+          path: deployment-bundle
+
+      - name: Configure short-lived AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-2' }}
+
+      - name: Upload commit bundle to private S3
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          aws s3 cp deployment-bundle/source.zip "s3://${AWS_ARTIFACT_BUCKET}/week10/deploy/${COMMIT_SHA}/source.zip"
+          aws s3 cp deployment-bundle/api-image.tar "s3://${AWS_ARTIFACT_BUCKET}/week10/deploy/${COMMIT_SHA}/api-image.tar"
+
+      - name: Deploy on EC2 and verify health
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+
+          commit = os.environ["COMMIT_SHA"]
+          bucket = os.environ["AWS_ARTIFACT_BUCKET"]
+          instance_id = os.environ["AWS_INSTANCE_ID"]
+          if not re.fullmatch(r"[0-9a-f]{40}", commit):
+              raise SystemExit("Invalid commit SHA")
+          if not re.fullmatch(r"[a-z0-9.-]{3,63}", bucket):
+              raise SystemExit("Invalid S3 bucket name")
+          if not re.fullmatch(r"i-[0-9a-f]+", instance_id):
+              raise SystemExit("Invalid EC2 instance ID")
+
+          prefix = f"s3://{bucket}/week10/deploy/{commit}"
+          commands = [
+              "set -Eeuo pipefail",
+              f"aws s3 cp '{prefix}/source.zip' /tmp/week10-source.zip",
+              f"aws s3 cp '{prefix}/api-image.tar' /tmp/week10-api-image.tar",
+              "unzip -oq /tmp/week10-source.zip -d /opt/tc5061/semana-10",
+              f"bash /opt/tc5061/semana-10/deploy/aws/deploy_on_instance.sh {commit}",
+          ]
+          request = {
+              "DocumentName": "AWS-RunShellScript",
+              "InstanceIds": [instance_id],
+              "Comment": f"Deploy Semana 10 commit {commit}",
+              "TimeoutSeconds": 900,
+              "Parameters": {"commands": commands},
+          }
+          with open(os.path.join(os.environ["RUNNER_TEMP"], "ssm-command.json"), "w") as f:
+              json.dump(request, f)
+          PY
+
+          command_id=$(aws ssm send-command --cli-input-json "file://${RUNNER_TEMP}/ssm-command.json" --query 'Command.CommandId' --output text)
+          set +e
+          aws ssm wait command-executed --command-id "$command_id" --instance-id "$AWS_INSTANCE_ID"
+          wait_status=$?
+          set -e
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$AWS_INSTANCE_ID" --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}' --output json || true
+          exit "$wait_status"

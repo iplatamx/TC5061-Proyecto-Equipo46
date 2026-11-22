@@ -39,6 +39,23 @@ C:\IVAN\MNA\TC5061\semana-10\deploy\aws\package_aws.ps1 -ModelDirectory "C:\ruta
 
 La instancia revisa ese prefijo cada dos minutos. Cuando estén los dos objetos, los descarga, construye la imagen con Compose y levanta MLflow y la API. La primera construcción puede tardar varios minutos.
 
+## Habilitar despliegue automático desde GitHub Actions
+
+El workflow ejecuta pruebas y construye la imagen en cada push y pull request. Solo despliega cuando el push ocurre en feature/semana10-microservicios-cicd-finops-aws. La autenticación usa OIDC con credenciales temporales; no almacenes claves de AWS de larga duración en GitHub.
+
+1. En CloudFormation, crea un stack con deploy/aws/github-actions-role.yaml. Usa ArtifactBucketName e InstanceId de los Outputs del stack Semana 10. Si ya existe el proveedor IAM OIDC token.actions.githubusercontent.com en la cuenta, pasa su ARN en ExistingOIDCProviderArn; si no existe, déjalo vacío para que esta plantilla lo cree. Conserva el proveedor mientras algún rol de GitHub lo utilice.
+2. En los Outputs del nuevo stack, copia GitHubActionsDeployRoleArn.
+3. En GitHub abre Settings → Secrets and variables → Actions → Variables y crea:
+   - AWS_DEPLOY_ROLE_ARN: valor de GitHubActionsDeployRoleArn.
+   - AWS_REGION: us-east-2.
+   - AWS_ARTIFACT_BUCKET: valor de ArtifactBucketName del stack Semana 10.
+   - AWS_INSTANCE_ID: valor de InstanceId del stack Semana 10.
+4. Haz push a feature/semana10-microservicios-cicd-finops-aws. Tras pasar las pruebas y construir la imagen, Actions sube source.zip y api-image.tar a week10/deploy/<commit>/ en S3, envía el despliegue por Systems Manager y comprueba la salud de API y MLflow. El stack EC2 debe seguir activo y administrado por Systems Manager.
+
+El rol de GitHub queda limitado al subject OIDC de este repositorio y rama, al prefijo week10/deploy/ del bucket y a la instancia con etiqueta Project=TC5061-Semana10. La instancia descarga los paquetes con su propio rol, ya limitado al prefijo week10/. Si el repositorio usa subjects OIDC inmutables, ajusta el parámetro GitHubSubject al subject que emite GitHub para ese repositorio.
+
+Si deploy-aws aparece como omitido, revisa que las cuatro variables anteriores estén definidas. Los pull requests y los pushes a otras ramas no actualizan la instancia.
+
 ## Verificar y ejecutar Locust
 
 En **EC2 → Instances → Connect → Session Manager**, selecciona la instancia y abre una sesión. Comprueba el despliegue:

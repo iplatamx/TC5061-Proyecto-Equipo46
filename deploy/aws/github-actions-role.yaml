@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Least-privilege GitHub Actions OIDC role for deploying Semana 10 to one EC2 instance.
+
+Parameters:
+  ArtifactBucketName:
+    Type: String
+    Description: Existing private S3 artifact bucket created by the Semana 10 stack.
+  InstanceId:
+    Type: String
+    Description: Existing managed EC2 instance identifier from the Semana 10 stack.
+    AllowedPattern: '^i-[0-9a-f]+$'
+  ExistingOIDCProviderArn:
+    Type: String
+    Default: ''
+    Description: Existing GitHub OIDC provider ARN, or leave empty to create the account-level provider.
+  GitHubSubject:
+    Type: String
+    Default: repo:iplatamx/TC5061-Proyecto-Equipo46:ref:refs/heads/feature/semana10-microservicios-cicd-finops-aws
+    Description: Exact GitHub OIDC subject allowed to assume this role.
+
+Conditions:
+  CreateGitHubOIDCProvider: !Equals [!Ref ExistingOIDCProviderArn, '']
+
+Resources:
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateGitHubOIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      Tags:
+        - Key: Project
+          Value: TC5061-Semana10
+
+  GitHubActionsDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateGitHubOIDCProvider
+                - !Ref GitHubOIDCProvider
+                - !Ref ExistingOIDCProviderArn
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Ref GitHubSubject
+      Policies:
+        - PolicyName: DeployWeek10ToOneInstance
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: UploadCommitBundles
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${ArtifactBucketName}/week10/deploy/*'
+              - Sid: SendRunCommandToWeek10Instance
+                Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunShellScript'
+              - Sid: RestrictRunCommandToTaggedInstance
+                Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${InstanceId}'
+                Condition:
+                  StringEquals:
+                    ssm:resourceTag/Project: TC5061-Semana10
+              - Sid: ReadCommandResult
+                Effect: Allow
+                Action:
+                  - ssm:GetCommandInvocation
+                Resource: '*'
+      Tags:
+        - Key: Project
+          Value: TC5061-Semana10
+
+Outputs:
+  GitHubActionsDeployRoleArn:
+    Description: Add this value as the AWS_DEPLOY_ROLE_ARN GitHub Actions variable.
+    Value: !GetAtt GitHubActionsDeployRole.Arn
+  GitHubOIDCProviderArn:
+    Description: Account-level provider ARN; reuse it when creating another GitHub deployment role.
+    Value: !If
+      - CreateGitHubOIDCProvider
+      - !Ref GitHubOIDCProvider
+      - !Ref ExistingOIDCProviderArn

@@ -47,6 +47,7 @@ services:
     restart: "no"
 
   api:
+    image: ${MIBICI_API_IMAGE:-mibici-equipo46-api:local}
     build:
       context: .
       dockerfile: Containerfile

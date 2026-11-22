@@ -1347,7 +1347,7 @@ Consulta [la guía de despliegue AWS](deploy/aws/README.md) para crear el stack,
 
 ### CI/CD con GitHub Actions
 
-El workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) corre en push y pull request: instala Python, ejecuta PyTest y construye la imagen OCI del servicio. La ejecución de GitHub Actions para esta rama terminó correctamente: [consultar resultado del workflow](https://github.com/iplatamx/TC5061-Proyecto-Equipo46/actions/runs/45049426702).
+El workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) ejecuta PyTest y construye la imagen en cada push y pull request. Después de un push a feature/semana10-microservicios-cicd-finops-aws, también publica el paquete de esa versión en el bucket privado y actualiza EC2 mediante Systems Manager. El despliegue requiere configurar el rol OIDC y las variables de GitHub descritas en [deploy/aws/README.md](deploy/aws/README.md); los pull requests no despliegan a AWS.
 
 ### Prueba de carga y monitoreo en AWS
 
