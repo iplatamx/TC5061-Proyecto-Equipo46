@@ -1406,3 +1406,7 @@ La captura se guarda en reports/semana10/docker_stats.csv. docker stats mide los
 ### Resultados y análisis FinOps
 
 El reporte reports/semana10/analisis_finops.md documenta el escenario medido, las métricas, las gráficas HTML, la captura de recursos y la estimación de costo por inferencia. Los valores de nube son una referencia calculada a partir del throughput local y deben validarse en la infraestructura elegida.
+
+### Despliegue temporal en AWS
+
+La guía [deploy/aws/README.md](deploy/aws/README.md) prepara el despliegue en una instancia EC2 `t3.medium` en `us-east-2`, con los modelos en un bucket S3 privado. La plantilla administra la instancia con Systems Manager y deja cerrados los puertos entrantes de la API y MLflow. El presupuesto de referencia es MXN $30 por un día; al terminar, descarga los reportes y elimina el stack para detener los cargos.

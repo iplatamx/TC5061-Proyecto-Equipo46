@@ -64,3 +64,13 @@ Es una estimación ilustrativa: supone que una instancia c6i.xlarge sostendría 
 - [Resumen CSV de Locust](locust_stats_stats.csv)
 - [Serie temporal CSV de Locust](locust_stats_stats_history.csv)
 - [Muestras CPU/memoria](docker_stats.csv)
+
+## Estimación para el despliegue AWS de la rama `...-aws`
+
+La propuesta de despliegue temporal usa una instancia EC2 `t3.medium` (2 vCPU, 4 GiB), un volumen cifrado gp3 de 30 GiB y una IPv4 pública. API y MLflow no aceptan conexiones entrantes desde Internet; S3 guarda los paquetes privados y expira los objetos después de dos días.
+
+Con los precios de referencia de USD $0.0418/h para `t3.medium`, USD $0.005/h por IPv4 y USD $0.08/GiB-mes para gp3, el costo aproximado de un día es USD $1.20, o MXN $22.89 antes de impuestos. Con un margen de 16 %: **MXN $26.55**, por lo que conviene presupuestar **MXN $30 por un día**. Para 730 horas continuas el cálculo es USD $36.56 / MXN $695.70 antes de impuestos, o aproximadamente **MXN $807 con el mismo margen**.
+
+Usando el throughput medido localmente (32.2999 req/s), el costo fijo de cómputo estimado equivale a cerca de **MXN $6.84 por millón de inferencias**, antes de considerar créditos T3, almacenamiento adicional, transferencia o impuestos. Esta extrapolación no es una medición de AWS: se validará el throughput real después del despliegue. El precio T3 publicado es una referencia de lista y debe confirmarse para `us-east-2` antes del lanzamiento. T3 es burstable; una carga alta sostenida puede consumir créditos de CPU adicionales.
+
+Fuentes: [EC2 T3](https://aws.amazon.com/ec2/instance-types/t3/), [IPv4 de AWS](https://aws.amazon.com/vpc/pricing/), [EBS gp3](https://aws.amazon.com/ebs/pricing/), [tipo de cambio DOF al 20/11/2026](https://dof.gob.mx/indicadores_detalle.php?cod_tipo_indicador=158&dfecha=20%2F11%2F2026&hfecha=20%2F11%2F2026).

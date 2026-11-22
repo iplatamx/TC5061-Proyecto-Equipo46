@@ -1,0 +1,203 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Temporary EC2 host for the TC5061 Week 10 Docker Compose stack.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Select the default VPC in us-east-2.
+  PublicSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Select a public subnet in the selected VPC.
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t3.medium
+    Description: 2 vCPU and 4 GiB RAM, sized for the measured API and MLflow containers.
+
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireWeek10BundlesAndReports
+            Status: Enabled
+            ExpirationInDays: 2
+      Tags:
+        - Key: Project
+          Value: TC5061-Semana10
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: Week10PrivateArtifactsOnly
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ListDeploymentPrefix
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt ArtifactBucket.Arn
+                Condition:
+                  StringLike:
+                    s3:prefix:
+                      - week10/*
+              - Sid: ReadDeploymentBundles
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub '${ArtifactBucket.Arn}/week10/*'
+              - Sid: UploadLoadTestReports
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub '${ArtifactBucket.Arn}/reports/*'
+      Tags:
+        - Key: Project
+          Value: TC5061-Semana10
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: No inbound ports; manage the host through Systems Manager Session Manager.
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: semana10-ssm-only
+        - Key: Project
+          Value: TC5061-Semana10
+
+  Week10Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: true
+          SubnetId: !Ref PublicSubnetId
+          GroupSet:
+            - !Ref InstanceSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash
+            set -Eeuo pipefail
+            exec > >(tee -a /var/log/week10-bootstrap.log | logger -t week10-bootstrap) 2>&1
+
+            dnf install -y docker unzip curl
+            systemctl enable --now docker
+            systemctl enable --now amazon-ssm-agent
+            usermod -aG docker ec2-user
+            install -d -m 0755 /usr/local/lib/docker/cli-plugins
+            curl -fsSL https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+            chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+            install -d -m 0755 /opt/tc5061/semana-10 /opt/tc5061/semana-07/mlruns/2/models
+            printf '%s\n' '${ArtifactBucket}' > /opt/tc5061/aws-artifact-bucket
+            chown -R ec2-user:ec2-user /opt/tc5061
+
+            cat > /usr/local/sbin/deploy-week10 <<'SCRIPT'
+            #!/bin/bash
+            set -Eeuo pipefail
+            base=/opt/tc5061
+            if [ -f "$base/.week10-deployed" ]; then
+              systemctl disable --now week10-deploy.timer >/dev/null 2>&1 || true
+              exit 0
+            fi
+            bucket='${ArtifactBucket}'
+            if ! aws s3api head-object --bucket "$bucket" --key week10/source.zip >/dev/null 2>&1; then exit 0; fi
+            if ! aws s3api head-object --bucket "$bucket" --key week10/week07-models.zip >/dev/null 2>&1; then exit 0; fi
+            aws s3 cp "s3://$bucket/week10/source.zip" /tmp/week10-source.zip
+            aws s3 cp "s3://$bucket/week10/week07-models.zip" /tmp/week07-models.zip
+            unzip -oq /tmp/week10-source.zip -d "$base/semana-10"
+            unzip -oq /tmp/week07-models.zip -d "$base/semana-07/mlruns/2/models"
+            chown -R ec2-user:ec2-user "$base"
+            cd "$base/semana-10"
+            MIBICI_LEGACY_MODELS_DIR="$base/semana-07/mlruns/2/models" docker compose up -d --build
+            touch "$base/.week10-deployed"
+            systemctl disable --now week10-deploy.timer >/dev/null 2>&1 || true
+            SCRIPT
+            chmod 0755 /usr/local/sbin/deploy-week10
+
+            cat > /etc/systemd/system/week10-deploy.service <<'UNIT'
+            [Unit]
+            Description=Install the TC5061 Week 10 stack after private bundles arrive
+            After=network-online.target docker.service amazon-ssm-agent.service
+            Wants=network-online.target
+            [Service]
+            Type=oneshot
+            ExecStart=/usr/local/sbin/deploy-week10
+            UNIT
+
+            cat > /etc/systemd/system/week10-deploy.timer <<'UNIT'
+            [Unit]
+            Description=Check for the private Week 10 deployment bundles
+            [Timer]
+            OnBootSec=60s
+            OnUnitActiveSec=2min
+            Unit=week10-deploy.service
+            [Install]
+            WantedBy=timers.target
+            UNIT
+            systemctl daemon-reload
+            systemctl enable --now week10-deploy.timer
+      Tags:
+        - Key: Name
+          Value: semana10-microservicios-cicd-finops-aws
+        - Key: Project
+          Value: TC5061-Semana10
+
+Outputs:
+  ArtifactBucketName:
+    Description: Upload source.zip and week07-models.zip under the week10/ prefix.
+    Value: !Ref ArtifactBucket
+  InstanceId:
+    Description: EC2 instance identifier.
+    Value: !Ref Week10Instance
+  InstancePublicIp:
+    Description: Public IPv4 is used for outbound access only; the security group has no inbound rules.
+    Value: !GetAtt Week10Instance.PublicIp
+  InstanceSecurityGroupId:
+    Description: Security group with outbound-only access.
+    Value: !Ref InstanceSecurityGroup
