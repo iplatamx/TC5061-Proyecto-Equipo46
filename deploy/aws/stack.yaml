@@ -10,10 +10,10 @@ Parameters:
     Description: Select a public subnet in the selected VPC.
   InstanceType:
     Type: String
-    Default: t3.medium
+    Default: m7i-flex.large
     AllowedValues:
-      - t3.medium
-    Description: 2 vCPU and 4 GiB RAM, sized for the measured API and MLflow containers.
+      - m7i-flex.large
+    Description: 2 vCPU and 8 GiB RAM, eligible for the account Free Plan and sized for the API and MLflow containers.
 
 Resources:
   ArtifactBucket:
@@ -125,13 +125,17 @@ Resources:
             set -Eeuo pipefail
             exec > >(tee -a /var/log/week10-bootstrap.log | logger -t week10-bootstrap) 2>&1
 
-            dnf install -y docker unzip curl
+            dnf install -y docker unzip curl-minimal
             systemctl enable --now docker
             systemctl enable --now amazon-ssm-agent
             usermod -aG docker ec2-user
             install -d -m 0755 /usr/local/lib/docker/cli-plugins
             curl -fsSL https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
             chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+            curl -fsSL https://github.com/docker/buildx/releases/download/v0.39.1/buildx-v0.39.1.linux-amd64 -o /tmp/docker-buildx
+            echo '903090816da68f8bc1a2ff5346dd163a5adacfce4548d003c75df42cd47a9bf4  /tmp/docker-buildx' | sha256sum -c -
+            install -m 0755 /tmp/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
+            docker buildx version
 
             install -d -m 0755 /opt/tc5061/semana-10 /opt/tc5061/semana-07/mlruns/2/models
             printf '%s\n' '${ArtifactBucket}' > /opt/tc5061/aws-artifact-bucket
