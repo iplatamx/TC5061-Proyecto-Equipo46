@@ -40,3 +40,9 @@ models/*
 .DS_Store
 Thumbs.db
 .vscode/
+
+# MLflow database and artifacts created by Docker Compose
+.mlflow-data/
+
+# Locust load-test results
+!reports/semana10/*.csv

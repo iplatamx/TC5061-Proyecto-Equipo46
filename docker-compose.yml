@@ -1,0 +1,100 @@
+name: tc5061-equipo46
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.6.0
+    entrypoint: ["mlflow"]
+    command:
+      - server
+      - --backend-store-uri
+      - sqlite:////mlflow/mlflow.db
+      - --artifacts-destination
+      - /mlflow/artifacts
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --allowed-hosts
+      - "mlflow:5000,localhost:*,127.0.0.1:*"
+    ports:
+      - "127.0.0.1:${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - ./.mlflow-data:/mlflow
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  registry-seed:
+    image: ghcr.io/mlflow/mlflow:v3.6.0
+    entrypoint: ["python", "/seed_mlflow_registry.py"]
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_REGISTRY_URI: http://mlflow:5000
+      MIBICI_LEGACY_MODELS_PATH: /legacy-models
+    volumes:
+      - type: bind
+        source: ${MIBICI_LEGACY_MODELS_DIR:-../semana-07/mlruns/2/models}
+        target: /legacy-models
+        read_only: true
+      - ./scripts/seed_mlflow_registry.py:/seed_mlflow_registry.py:ro
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Containerfile
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_REGISTRY_URI: http://mlflow:5000
+      MIBICI_MODEL_NAME: ${MIBICI_MODEL_NAME:-mibici-equipo46-p1-demanda}
+      MIBICI_MODEL_ALIAS: ${MIBICI_MODEL_ALIAS:-champion}
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      registry-seed:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+  locust:
+    image: locustio/locust:2.47.0
+    profiles: ["loadtest"]
+    command:
+      - -f
+      - /mnt/locust/locustfile.py
+      - --headless
+      - --host
+      - http://api:8000
+      - --users
+      - "${LOCUST_USERS:-20}"
+      - --spawn-rate
+      - "${LOCUST_SPAWN_RATE:-5}"
+      - --run-time
+      - "${LOCUST_RUN_TIME:-1m}"
+      - --html
+      - /reports/locust_report.html
+      - --csv
+      - /reports/locust_stats
+      - --csv-full-history
+      - --stop-timeout
+      - "5"
+    volumes:
+      - ./locustfile.py:/mnt/locust/locustfile.py:ro
+      - ./reports/semana10:/reports
+    depends_on:
+      api:
+        condition: service_healthy
+

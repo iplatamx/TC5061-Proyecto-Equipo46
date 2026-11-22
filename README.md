@@ -1334,3 +1334,75 @@ Ambos modelos se evaluaron sobre las mismas 181,632 filas de octubre:
 La versión 2 obtuvo un MAE 0.76% menor y también mejoró RMSE y R². Se recomienda como candidata a versión vigente. El alias `champion` permanece en la versión 1; el resultado del análisis no lo cambia automáticamente. El detalle de la evaluación está en [el resumen del A/B testing](docs/evidencias_semana9/ab_test_october_second_half.md) y en [la documentación del reentrenamiento](docs/semana9_entrenamiento_abtest.md).
 
 Para Continuous Training se propone una estrategia supervisada, condicionada a evidencia de degradación. Vacaciones, días festivos, contingencias de transporte, cambios de tarifa, verano y fin de año no son variables de entrada actuales; se necesitan fechas y etiquetas verificables para evaluar su efecto. Con la evidencia de un solo periodo mensual no se fija una frecuencia automática de reentrenamiento.
+
+## Semana 10 — Microservicios, CI/CD y FinOps
+
+Esta etapa levanta la API y MLflow con Docker Compose, valida el proyecto con GitHub Actions y permite ejecutar una carga reproducible con Locust.
+
+### Docker Compose
+
+Requisitos: Docker Desktop con el motor activo y Docker Compose v2. Desde la raíz del repositorio:
+
+~~~powershell
+docker compose up -d --build
+docker compose ps
+Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod http://localhost:8000/model-info
+~~~
+
+La API queda en http://localhost:8000; MLflow, en http://localhost:5000. El servicio de inicialización registra P1 v1 y v2 y asigna champion a v1. Por defecto, usa los artefactos existentes en ../semana-07/mlruns/2/models, como se describe en este README. Si están en otra ruta, configura MIBICI_LEGACY_MODELS_DIR antes de levantar Compose. Ejemplo:
+
+~~~powershell
+$env:MIBICI_LEGACY_MODELS_DIR = "C:/ruta/mlruns/2/models"
+~~~
+
+El directorio .mlflow-data/ conserva la base y artefactos creados por el stack. Para detener los contenedores sin borrar esos datos:
+
+~~~powershell
+docker compose down
+~~~
+
+### CI/CD con GitHub Actions
+
+El workflow .github/workflows/ci.yml se ejecuta en cada push y pull_request. Instala Python 3.11 y las dependencias, ejecuta python -m pytest tests/ -q y, si las pruebas pasan, construye la imagen mibici-equipo46-api:ci con el Containerfile. Para activar el workflow remoto, sube la rama al repositorio de GitHub o abre un pull request.
+
+Los mismos pasos se pueden ejecutar localmente desde la raíz:
+
+~~~powershell
+python -m pip install -r requirements.txt pytest==9.2.0
+python -m pip install -e .
+python -m pytest tests/ -q
+docker build --file Containerfile --tag mibici-equipo46-api:ci .
+~~~
+
+### Locust y reporte de carga
+
+Con API y MLflow activos, ejecuta el perfil opcional de Locust:
+
+~~~powershell
+docker compose --profile loadtest run --rm locust
+~~~
+
+El escenario predeterminado usa 20 usuarios, una tasa de llegada de 5 usuarios por segundo y 1 minuto de carga. Cada petición envía datos sintéticos que cumplen el contrato de POST /predict. Puedes ajustar LOCUST_USERS, LOCUST_SPAWN_RATE y LOCUST_RUN_TIME en la terminal antes del comando.
+
+Locust guarda reports/semana10/locust_report.html con gráficas de latencia, throughput y fallos, además de CSV con el resumen y la serie temporal.
+
+### Consumo de CPU y memoria
+
+Abre dos terminales desde la raíz del proyecto. En la primera, inicia la captura:
+
+~~~powershell
+.\scripts\monitor_compose_stats.ps1 -DurationSeconds 90 -IntervalSeconds 2
+~~~
+
+En la segunda, ejecuta Locust mientras se toman las muestras:
+
+~~~powershell
+docker compose --profile loadtest run --rm locust
+~~~
+
+La captura se guarda en reports/semana10/docker_stats.csv. docker stats mide los contenedores de la API y MLflow.
+
+### Resultados y análisis FinOps
+
+El reporte reports/semana10/analisis_finops.md documenta el escenario medido, las métricas, las gráficas HTML, la captura de recursos y la estimación de costo por inferencia. Los valores de nube son una referencia calculada a partir del throughput local y deben validarse en la infraestructura elegida.
