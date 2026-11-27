@@ -1,4 +1,4 @@
-name: TC5061 | Semana 10 | Pytest + Docker + Compose
+name: TC5061 | Semana 10 | Pytest + Docker + Compose + Locust
 
 on:
   push:
@@ -52,7 +52,7 @@ jobs:
           if-no-files-found: warn
 
   build_and_smoke:
-    name: "2 | Imagen OCI + Compose + inferencia smoke"
+    name: "2 | Imagen OCI + Compose + inferencia + Locust smoke"
     runs-on: ubuntu-latest
     timeout-minutes: 35
     needs: unit_tests
@@ -108,6 +108,54 @@ jobs:
 
       - name: Probar /health, /model-info y /predict
         run: python -m ops.smoke_test --url http://localhost:8000
+
+      - name: Configurar Python 3.11 para Locust
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-loadtest.txt
+
+      - name: Instalar Locust
+        run: python -m pip install -r requirements-loadtest.txt
+
+      - name: Ejecutar smoke test de carga con Locust
+        run: |
+          mkdir -p artifacts/locust-ci
+          python -m locust \
+            -f loadtest/locustfile.py \
+            --host http://localhost:8000 \
+            --headless \
+            -u 5 -r 5 -t 30s \
+            --csv artifacts/locust-ci/locust \
+            --html artifacts/locust-ci/locust.html
+
+      - name: Validar solicitudes del smoke test
+        run: |
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+
+          path = Path("artifacts/locust-ci/locust_stats.csv")
+          with path.open(encoding="utf-8", newline="") as report:
+              aggregate = next(
+                  row for row in csv.DictReader(report)
+                  if row["Name"] == "Aggregated"
+              )
+          requests = int(aggregate["Request Count"])
+          failures = int(aggregate["Failure Count"])
+          print(f"Locust: {requests} solicitudes, {failures} fallas.")
+          if requests == 0 or failures:
+              raise SystemExit("El smoke test de Locust no cumplió el criterio.")
+          PY
+
+      - name: Conservar reporte HTML y CSV de Locust
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semana11-locust-smoke
+          path: artifacts/locust-ci/
+          if-no-files-found: warn
 
       - name: Estado final de servicios
         run: docker compose -f docker-compose.yml ps --all
