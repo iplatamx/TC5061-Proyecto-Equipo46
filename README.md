@@ -1391,11 +1391,15 @@ local y sus artefactos del volumen de Compose.
 El workflow `.github/workflows/semana10-ci.yml` se ejecuta con `push`,
 `pull_request` y ejecución manual. Ejecuta `pytest` sobre `tests/`,
 construye la imagen OCI con caché de Buildx, valida Compose, levanta los
-servicios y comprueba `/health`, `/model-info` y `/predict`. Publica como
-artefactos los resultados de Pytest (JUnit) y los logs de los contenedores.
+servicios, comprueba `/health`, `/model-info` y `/predict`, y ejecuta un smoke
+test de Locust (5 usuarios durante 30 segundos). El job falla si Locust no
+genera solicitudes o registra errores. Conserva como artefactos los resultados
+JUnit, el HTML/CSV de Locust y los logs de los contenedores.
 Se utiliza un modelo sintético SOLO en el smoke test de CI para evitar
 publicar un modelo real en GitHub. La evidencia del rendimiento real
 corresponde al análisis de Locust que se encuentra en `reports/semana10_locust/`.
+El smoke test de CI verifica el cableado de la API y del escenario; no sustituye
+las corridas de carga de 10, 50 y 100 usuarios ni sus reportes.
 
 El job opcional de publicación GHCR se habilita estableciendo en GitHub
 `Settings > Secrets and variables > Actions > Variables` la variable
@@ -1513,3 +1517,19 @@ que quedaron registradas en el análisis FinOps del PR #20.
 
 Guía: [`docs/Semana10_Axel_Guia_Paso_a_Paso.md`](docs/Semana10_Axel_Guia_Paso_a_Paso.md).
 Notas: [`docs/Semana10_Axel_Notas_Estudio.md`](docs/Semana10_Axel_Notas_Estudio.md).
+
+## Proyecto final — integración de los puntos 3 y 4
+
+**Punto 3, despliegue y operación:** la API, Compose, CI/CD y Locust quedan
+integrados en `docker-compose.yml`, `.github/workflows/semana10-ci.yml` y
+`loadtest/locustfile.py`. En cada ejecución de CI, Compose levanta el stack
+con un modelo sintético y Locust valida durante 30 segundos que la API acepte
+solicitudes sin fallas; el workflow conserva el reporte HTML y los CSV como
+artefactos de GitHub Actions. Las corridas de mayor duración se documentan en
+`reports/semana10_locust/`.
+
+**Punto 4, monitoreo, gobernanza y FinOps:** las evidencias retrospectivas de
+Evidently y A/B testing están en `docs/evidencias_semana9/`; el análisis de
+costos por inferencia está en `reports/semana10_locust/finops_costo_inferencia.csv`.
+La ficha de gobernanza del P1, sus usos previstos, limitaciones, métricas y
+estado del challenger se encuentra en [Model Card P1](docs/MODEL_CARD_P1_MIBICI.md).
