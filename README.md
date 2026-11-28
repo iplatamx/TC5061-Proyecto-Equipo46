@@ -18,7 +18,7 @@ Esta guía permite instalar y ejecutar el proyecto en cualquier computadora con 
 
 | Programa | Descarga | Nota |
 |---|---|---|
-| Python 3.10 o superior | https://www.python.org/downloads/ | En Windows, marcar **"Add Python to PATH"** durante la instalación |
+| Python 3.11.9 (entorno de referencia) | https://www.python.org/downloads/ | En Windows, marcar **"Add Python to PATH"** durante la instalación |
 | Git | https://git-scm.com/downloads | Opciones por defecto |
 | VS Code (opcional) | https://code.visualstudio.com/ | Cualquier terminal funciona igual |
 
@@ -29,7 +29,7 @@ Abrir una terminal (en VS Code: menú **Terminal → New Terminal**) y ejecutar 
 **1. Descargar el proyecto**
 
 ```bash
-git clone https://github.com/axelR07/TC5061-Proyecto-Equipo46.git
+git clone https://github.com/iplatamx/TC5061-Proyecto-Equipo46.git
 cd TC5061-Proyecto-Equipo46
 ```
 
@@ -51,7 +51,7 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-Todas las dependencias tienen versión fija en `requirements.txt`, por lo que el entorno es idéntico en cualquier computadora.
+Las dependencias directas del proyecto se especifican en `requirements.txt`. Python 3.11.9 es el entorno de referencia; las dependencias transitivas y la plataforma pueden variar. Consulta la guía de Actividad 11 para reproducir y verificar el entorno.
 
 ## Obtención de los datos (ingesta)
 
@@ -125,7 +125,9 @@ Los viajes cuya estación no aparece en la nomenclatura actual **se conservan** 
 
 **Estaciones.** El proceso se detiene si faltan las columnas de identificador, latitud o longitud. Se descartan estaciones sin identificador o con identificador duplicado. Las estaciones con coordenadas fuera del Área Metropolitana de Guadalajara (latitud 20.50–20.80, longitud −103.50 a −103.20, definida en `mibici/config.py`) **no se eliminan**: se marcan con `coords_valid = False` y se listan en el manifiesto, porque sus viajes siguen siendo válidos para P1 y P2; solo deben excluirse en análisis que usan la ubicación (P3). Si la capacidad falta o no es válida, se registra una advertencia y la estación se conserva.
 
-### Resultados de la ejecución
+### Resultados históricos de la ingesta
+
+> Este resumen corresponde al manifiesto `d038fe16493d` (484 estaciones). La Actividad 11 reprodujo experimentos con el snapshot histórico `129a4a57efc7` (470 estaciones). Véase la sección final para distinguir las versiones.
 
 # Resumen de la ingesta
 
@@ -362,7 +364,7 @@ P2 — Tres candidatos de HistGradientBoostingClassifier:
 mlflow run . -e search_p2 --env-manager local --experiment-name mibici-equipo46
 ```
 
-P3 — Búsqueda de KMeans con K=4, 5 y 6:
+P3 — Búsqueda de KMeans con K=3, 4, 5 y 6 (la Actividad 11 añadió K=3 al entry point):
 
 ```powershell
 mlflow run . -e search_p3 --env-manager local --experiment-name mibici-equipo46
@@ -376,7 +378,9 @@ mlflow run . -e train -P question=P3 -P model=kmeans -P hyperparameters=@configs
 
 Las búsquedas registran parámetros, métricas, artefactos y modelos asociados a sus ejecuciones.
 
-### 5. Resultados experimentales
+### 5. Resultados experimentales históricos — Semana 6
+
+Los resultados siguientes son históricos; la Actividad 11 seleccionó P2-HGB-02 en una nueva ejecución con datos `129a4a57efc7`. Véase la sección final.
 
 | Pregunta | Baseline | Modelo seleccionado | Principal resultado |
 |---|---|---|---|
@@ -1513,3 +1517,28 @@ que quedaron registradas en el análisis FinOps del PR #20.
 
 Guía: [`docs/Semana10_Axel_Guia_Paso_a_Paso.md`](docs/Semana10_Axel_Guia_Paso_a_Paso.md).
 Notas: [`docs/Semana10_Axel_Notas_Estudio.md`](docs/Semana10_Axel_Notas_Estudio.md).
+
+
+## Proyecto integrador final — Actividad 11 (27 de noviembre de 2026)
+
+**Puntos 1 y 2 — estructura, experimentación y Registry (35 puntos).** Consulta la [guía técnica final](docs/Proyecto_Final_Puntos_1_2.md) para reproducir los entrenamientos y revisar los resultados auditados.
+
+| Indicador | Evidencia final |
+|---|---|
+| Datos | `129a4a57efc7`, 3,361,307 viajes, 470 estaciones; 10/10 Parquet verificados por SHA-256 |
+| MLflow Projects | `train` (baseline P1), `search_p1`, `search_p2`, `search_p3`; 14 runs FINISHED |
+| P1 | P1-HGB-02, MAE validación 0.735193; reducción de 43.89% frente al baseline |
+| P2 | P2-HGB-02, F1 validación 0.488584 |
+| P3 | KMeans K=3, Silhouette 0.450625 |
+| Model Registry | Tres modelos v1, `READY`, alias `champion`; auditoría integral PASS |
+| Pruebas | 64 passed, 3 warnings, 7.84 s, con integración real |
+| Consistencia P1 | `model.pkl` idéntico por SHA-256 en Registry histórico, Compose y Registry final |
+| Commit de entrenamiento | `c0e339c64045f660ce554e40cba05c7802231a56` |
+
+Los resultados de esta sección corresponden a la ejecución final, no reemplazan las mediciones históricas de semanas anteriores. El manifiesto de 484 estaciones (`d038fe16493d`) y el de 470 (`129a4a57efc7`) se conservan por separado. La rama de entrenamiento usa el segundo; el equipo debe revisar esta elección antes de fusionar el PR. Los datos históricos no se incluyen en Git: la reproducción exacta requiere recuperar y verificar ese snapshot. Una ingesta nueva puede producir datos y métricas diferentes.
+
+**Entornos:** 5002 (entrenamiento y auditoría final), 5001 (Registry histórico de consulta), 5000 (Registry aislado de Docker Compose). En un clon limpio se puede entrenar, registrar P1 real y exportarlo desde 5002 para arrancar Compose sin detener ese servidor. La API consume únicamente P1; P2 y P3 permanecen como modelos registrados de análisis. El alias `champion` indica aprobación académica, no despliegue comercial. El challenger de Semana 9 no se promovió automáticamente.
+
+**Evidencias verificables:** [auditoría integral](docs/evidencias_final/registry_final_integral.json), [identidad SHA-256](docs/evidencias_final/model_identity_sha256.json), [Pytest](docs/evidencias_final/pytest_final.txt), [auditoría histórica P1](docs/evidencias_final/registry_p1_historico.json). El [diagnóstico inicial](docs/evidencias_final/registry_audit.json) conserva el FAIL esperado por linaje ausente en el Registry de importación, no es el resultado final.
+
+Pendientes conjuntos: validar coherencia con Model Card y monitoreo, garantizar acceso a los datos de referencia, revisión y merge del PR, Actions del commit final y demostración de la API real. La auditoría de Registry no certifica por sí misma el despliegue, CI/CD ni una ingesta completa desde cero.

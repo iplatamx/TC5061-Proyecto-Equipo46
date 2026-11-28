@@ -1,5 +1,5 @@
 {
-  "data_version": "d038fe16493d",
+  "data_version": "129a4a57efc7",
   "start_month": "2026-01",
   "end_month": "2026-09",
   "requested_months": [
@@ -29,7 +29,7 @@
   "n_months": 9,
   "n_raw_trips": 3362065,
   "n_trips": 3361307,
-  "n_stations": 484,
+  "n_stations": 470,
   "kept_columns": [
     "trip_id",
     "gender",
@@ -43,15 +43,15 @@
   "dropped_columns": [
     "user_id"
   ],
-  "created_utc": "2026-10-25T04:57:29+00:00",
+  "created_utc": "2026-11-08T03:18:45+00:00",
   "files": [
     {
       "name": "stations.parquet",
-      "source": "nomenclatura_2026_09.csv",
-      "encoding": "utf-8-sig",
-      "rows": 484,
-      "raw_sha256": "206e45fe633922b634d858142fa21e6fd9f4c421b6435c02980ef290cc2df90d",
-      "sha256": "674459c2d1009460a8159d82c247860b1698dc1a16be355656013787378884d8",
+      "source": "nomenclatura_2026_10.csv",
+      "encoding": "latin-1",
+      "rows": 470,
+      "raw_sha256": "2da38dd60dcc74ccb95eb8ed1572e107cf5af44dfa6c5a4fbfa4e30f94ef7f3e",
+      "sha256": "5343509931694408747d9511b241594b40724d0babf43fb692ea9a87225f80e8",
       "stats": {
         "original_columns": [
           "id",
@@ -60,17 +60,15 @@
           "longitude",
           "dpcapacity"
         ],
-        "raw_rows": 484,
-        "stations_inactive": 14,
+        "raw_rows": 470,
+        "stations_inactive": 0,
         "stations_invalid_coords": [],
         "dropped": {
           "sin_id": 0,
           "id_duplicado": 0
         },
-        "warnings": [
-          "4 estaciones sin capacidad válida (se conservan)."
-        ],
-        "final_rows": 484,
+        "warnings": [],
+        "final_rows": 470,
         "final_columns": [
           "station_id",
           "name",

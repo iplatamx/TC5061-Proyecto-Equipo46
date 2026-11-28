@@ -20,7 +20,8 @@ import mlflow.sklearn
 from mlflow import MlflowClient
 from mlflow.exceptions import MlflowException
 
-from mibici.config import MLFLOW_EXPERIMENT_NAME
+from mibici.config import MANIFEST_PATH, MLFLOW_EXPERIMENT_NAME
+import json
 
 DATA_VERSION = "d038fe16493d"
 
@@ -68,7 +69,7 @@ MODELS = [
 ]
 
 
-def find_selected_run(client, experiment_id, config):
+def find_selected_run(client, experiment_id, config, data_version=DATA_VERSION):
     """Identifica la mejor corrida válida para una pregunta."""
 
     runs = client.search_runs(
@@ -91,7 +92,7 @@ def find_selected_run(client, experiment_id, config):
             or run.data.params.get("data_version")
         )
 
-        if version != DATA_VERSION:
+        if version != data_version:
             continue
 
         uri = run.data.tags.get("logged_model_uri")
@@ -158,6 +159,10 @@ def existing_version(client, name, run_id, model_uri):
 
 
 def register_models():
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    if manifest.get("complete") is not True or not manifest.get("data_version"):
+        raise RuntimeError("Manifiesto incompleto o sin version de datos.")
+    data_version = manifest["data_version"]
     tracking_uri = os.getenv(
         "MLFLOW_TRACKING_URI",
         "http://127.0.0.1:5000",
@@ -186,6 +191,7 @@ def register_models():
             client,
             experiment.experiment_id,
             config,
+            data_version=data_version,
         )
 
         # Confirma que el artefacto es recuperable.
@@ -226,7 +232,7 @@ def register_models():
         tags = {
             "team": "46",
             "question": config["question"],
-            "data_version": DATA_VERSION,
+            "data_version": data_version,
             "source_run_id": run.info.run_id,
             "source_model_uri": uri,
             "selected_run_name": run.data.tags.get(
@@ -250,7 +256,7 @@ def register_models():
             description=(
                 f"Modelo seleccionado de {config['question']}. "
                 f"Run: {run.info.run_id}. "
-                f"Datos: {DATA_VERSION}."
+                f"Datos: {data_version}."
             ),
         )
 

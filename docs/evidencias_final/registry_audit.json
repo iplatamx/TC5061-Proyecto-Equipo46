@@ -1,0 +1,77 @@
+{
+  "generated_utc": "2026-11-27T16:27:54.182204+00:00",
+  "git_head": "574bb361f7ce732cb3dbbf7beb6c3717fb92d6e7",
+  "tracked_worktree_dirty": true,
+  "python": "3.11.9",
+  "mlflow": "3.6.0",
+  "local_manifest": {
+    "data_version": "d038fe16493d",
+    "complete": true,
+    "start_month": "2026-01",
+    "end_month": "2026-09",
+    "n_trips": 3361307,
+    "n_stations": 484
+  },
+  "models": [
+    {
+      "question": "P1",
+      "name": "mibici-equipo46-p1-demanda",
+      "alias": "champion",
+      "errors": [
+        "Falta etiqueta validation_status=approved.",
+        "Falta etiqueta source_model_uri.",
+        "Versión de datos ausente o inconsistente.",
+        "Nombre del candidato no coincide con el run.",
+        "No se recuperó data/data_manifest.json: MlflowException. Revisar artefactos originales.",
+        "Faltan candidatos comparables: ['P1-HGB-01', 'P1-HGB-02', 'P1-HGB-03']",
+        "El champion no pertenece a los candidatos comparables de la búsqueda original."
+      ],
+      "warnings": [
+        "No consta commit de entrenamiento verificable; revisar metadatos históricos.",
+        "El manifiesto de trabajo difiere del histórico; se verifica el manifiesto del run, no se sustituye su hash."
+      ],
+      "aliases": {
+        "champion": "1"
+      },
+      "version": "1",
+      "status": "READY",
+      "run_id": "b716e665b7ab433aba3115ccb066df93",
+      "data_version": null,
+      "selected_run": null,
+      "source_model_uri": null,
+      "validation_status": null,
+      "run_name": "semana10_importacion_champion",
+      "run_status": "FINISHED",
+      "experiment_id": "0",
+      "git_commit": null,
+      "params": {},
+      "metrics": {},
+      "candidate_ranking": [],
+      "signature": "inputs: \n  ['station_id': float (required), 'departures_this_hour': float (required), 'arrivals_this_hour': float (required), 'departures_mean_last_24h': float (required), 'departures_mean_last_168h': float (required), 'target_hour': float (required), 'target_dayofweek': float (required), 'target_is_weekend': float (required)]\noutputs: \n  [Tensor('float64', (-1,))]\nparams: \n  None\n",
+      "prediction_sample": [
+        3.923333879487776
+      ],
+      "service_version": "1"
+    },
+    {
+      "question": "P2",
+      "name": "mibici-equipo46-p2-riesgo",
+      "alias": "champion",
+      "errors": [
+        "RestException: RESOURCE_DOES_NOT_EXIST: Registered Model with name=mibici-equipo46-p2-riesgo not found"
+      ],
+      "warnings": []
+    },
+    {
+      "question": "P3",
+      "name": "mibici-equipo46-p3-grupos",
+      "alias": "champion",
+      "errors": [
+        "RestException: RESOURCE_DOES_NOT_EXIST: Registered Model with name=mibici-equipo46-p3-grupos not found"
+      ],
+      "warnings": []
+    }
+  ],
+  "status": "FAIL",
+  "scope": "Solo modelos solicitados; no certifica despliegue, CI/CD ni reproducción completa."
+}

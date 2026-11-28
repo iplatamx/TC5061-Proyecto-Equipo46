@@ -1,0 +1,283 @@
+{
+  "generated_utc": "2026-11-27T17:44:39.904898+00:00",
+  "git_head": "c0e339c64045f660ce554e40cba05c7802231a56",
+  "tracked_worktree_dirty": false,
+  "python": "3.11.9",
+  "mlflow": "3.6.0",
+  "local_manifest": {
+    "data_version": "129a4a57efc7",
+    "complete": true,
+    "start_month": "2026-01",
+    "end_month": "2026-09",
+    "n_trips": 3361307,
+    "n_stations": 470
+  },
+  "models": [
+    {
+      "question": "P1",
+      "name": "mibici-equipo46-p1-demanda",
+      "alias": "champion",
+      "errors": [],
+      "warnings": [],
+      "aliases": {
+        "champion": "1"
+      },
+      "version": "1",
+      "status": "READY",
+      "run_id": "0610d950317245e48f2f37b18db3a324",
+      "data_version": "129a4a57efc7",
+      "selected_run": "P1-HGB-02",
+      "source_model_uri": "models:/m-69532c615b97466bb8a506845ea43a09",
+      "validation_status": "approved",
+      "run_name": "P1-HGB-02",
+      "run_status": "FINISHED",
+      "experiment_id": "1",
+      "git_commit": "c0e339c64045f660ce554e40cba05c7802231a56",
+      "params": {
+        "candidate": "P1-HGB-02",
+        "max_iter": "100",
+        "learning_rate": "0.08",
+        "max_leaf_nodes": "31",
+        "question": "P1",
+        "model": "hist_gradient_boosting",
+        "random_seed": "42",
+        "training_rows": "2160006",
+        "validation_rows": "462993",
+        "test_rows": "462993",
+        "data_version": "129a4a57efc7",
+        "train_target_start": "2026-01-01T01:00:00",
+        "train_target_end": "2026-07-11T02:00:00",
+        "validation_target_start": "2026-07-11T03:00:00",
+        "validation_target_end": "2026-08-21T01:00:00",
+        "test_target_start": "2026-08-21T02:00:00",
+        "test_target_end": "2026-10-01T00:00:00"
+      },
+      "metrics": {
+        "validation_mae": 0.7351930217572831,
+        "validation_rmse": 1.3070121208596446,
+        "validation_r2": 0.6707433977848813,
+        "test_mae": 0.8542780456894645,
+        "test_rmse": 1.5067933337950647,
+        "test_r2": 0.6789408995750218
+      },
+      "run_manifest": {
+        "data_version": "129a4a57efc7",
+        "start_month": "2026-01",
+        "end_month": "2026-09",
+        "complete": true,
+        "n_trips": 3361307,
+        "n_stations": 470
+      },
+      "candidate_ranking": [
+        {
+          "name": "P1-HGB-02",
+          "run_id": "0610d950317245e48f2f37b18db3a324",
+          "metrics": {
+            "validation_mae": 0.7351930217572831
+          }
+        },
+        {
+          "name": "P1-HGB-03",
+          "run_id": "76eb1886849b414b87771e65c3372b62",
+          "metrics": {
+            "validation_mae": 0.7361883121008237
+          }
+        },
+        {
+          "name": "P1-HGB-01",
+          "run_id": "08c2531ddd9f46d097c9e66d4d2f560b",
+          "metrics": {
+            "validation_mae": 0.7497573027221169
+          }
+        }
+      ],
+      "signature": "inputs: \n  ['station_id': float (required), 'departures_this_hour': float (required), 'arrivals_this_hour': float (required), 'departures_mean_last_24h': float (required), 'departures_mean_last_168h': float (required), 'target_hour': float (required), 'target_dayofweek': float (required), 'target_is_weekend': float (required)]\noutputs: \n  [Tensor('float64', (-1,))]\nparams: \n  None\n",
+      "prediction_sample": [
+        3.923333879487776
+      ],
+      "service_version": "1"
+    },
+    {
+      "question": "P2",
+      "name": "mibici-equipo46-p2-riesgo",
+      "alias": "champion",
+      "errors": [],
+      "warnings": [],
+      "aliases": {
+        "champion": "1"
+      },
+      "version": "1",
+      "status": "READY",
+      "run_id": "8d0377015cc14b8baa52ef86fb42eafe",
+      "data_version": "129a4a57efc7",
+      "selected_run": "P2-HGB-02",
+      "source_model_uri": "models:/m-4a6bcc7f0f334863844c1e36619ecccf",
+      "validation_status": "approved",
+      "run_name": "P2-HGB-02",
+      "run_status": "FINISHED",
+      "experiment_id": "1",
+      "git_commit": "c0e339c64045f660ce554e40cba05c7802231a56",
+      "params": {
+        "candidate": "P2-HGB-02",
+        "max_iter": "100",
+        "learning_rate": "0.08",
+        "max_leaf_nodes": "31",
+        "question": "P2",
+        "model": "hist_gradient_boosting_classifier",
+        "class_weight": "balanced",
+        "risk_fraction": "0.1",
+        "random_seed": "42",
+        "training_rows": "2164592",
+        "validation_rows": "463976",
+        "test_rows": "463976",
+        "data_version": "129a4a57efc7",
+        "train_target_start": "2026-01-01T01:00:00",
+        "train_target_end": "2026-07-11T02:00:00",
+        "validation_target_start": "2026-07-11T03:00:00",
+        "validation_target_end": "2026-08-21T01:00:00",
+        "test_target_start": "2026-08-21T02:00:00",
+        "test_target_end": "2026-10-01T00:00:00"
+      },
+      "metrics": {
+        "validation_accuracy": 0.723274479714468,
+        "validation_balanced_accuracy": 0.7791138784691365,
+        "validation_precision": 0.3412586245270421,
+        "validation_recall": 0.8597482337108893,
+        "validation_f1": 0.4885842202536486,
+        "test_accuracy": 0.686705777885063,
+        "test_balanced_accuracy": 0.761144278781529,
+        "test_precision": 0.3472024410144501,
+        "test_recall": 0.8763282316240982,
+        "test_f1": 0.4973529605001539
+      },
+      "run_manifest": {
+        "data_version": "129a4a57efc7",
+        "start_month": "2026-01",
+        "end_month": "2026-09",
+        "complete": true,
+        "n_trips": 3361307,
+        "n_stations": 470
+      },
+      "candidate_ranking": [
+        {
+          "name": "P2-HGB-02",
+          "run_id": "8d0377015cc14b8baa52ef86fb42eafe",
+          "metrics": {
+            "validation_f1": 0.4885842202536486,
+            "validation_recall": 0.8597482337108893,
+            "validation_balanced_accuracy": 0.7791138784691365
+          }
+        },
+        {
+          "name": "P2-HGB-03",
+          "run_id": "cfe983be36c24459b1d028808fcf538e",
+          "metrics": {
+            "validation_f1": 0.4883870813739766,
+            "validation_recall": 0.8604351239206011,
+            "validation_balanced_accuracy": 0.7791351454973828
+          }
+        },
+        {
+          "name": "P2-HGB-01",
+          "run_id": "92d7d2fab62847ae8fe42a33f936fad9",
+          "metrics": {
+            "validation_f1": 0.4853432252466677,
+            "validation_recall": 0.8547016933946394,
+            "validation_balanced_accuracy": 0.7758864008945487
+          }
+        }
+      ],
+      "signature": "inputs: \n  ['station_id': float (required), 'capacity': float (required), 'departures_this_hour': float (required), 'arrivals_this_hour': float (required), 'departures_mean_last_24h': float (required), 'departures_mean_last_168h': float (required), 'target_hour': float (required), 'target_dayofweek': float (required), 'target_is_weekend': float (required)]\noutputs: \n  [Tensor('int8', (-1,))]\nparams: \n  None\n"
+    },
+    {
+      "question": "P3",
+      "name": "mibici-equipo46-p3-grupos",
+      "alias": "champion",
+      "errors": [],
+      "warnings": [],
+      "aliases": {
+        "champion": "1"
+      },
+      "version": "1",
+      "status": "READY",
+      "run_id": "412c05f247a547ba8939204208bc7d2f",
+      "data_version": "129a4a57efc7",
+      "selected_run": "P3_kmeans_3_station_usage_profiles",
+      "source_model_uri": "models:/m-54d8f48671094d8ca3bdb45078047054",
+      "validation_status": "approved",
+      "run_name": "P3_kmeans_3_station_usage_profiles",
+      "run_status": "FINISHED",
+      "experiment_id": "1",
+      "git_commit": "c0e339c64045f660ce554e40cba05c7802231a56",
+      "params": {
+        "question": "P3",
+        "baseline": "KMeans_3_clusters",
+        "n_clusters": "3",
+        "n_init": "10",
+        "max_iter": "300",
+        "scaler": "StandardScaler",
+        "random_seed": "42",
+        "station_count": "470",
+        "profile_dimension": "336",
+        "profile": "arrivals_and_departures_by_weekday_and_hour",
+        "start_month": "2026-01",
+        "end_month": "2026-09",
+        "data_version": "129a4a57efc7"
+      },
+      "metrics": {
+        "silhouette": 0.4506254494190216,
+        "calinski_harabasz": 263.9313033896931,
+        "inertia": 70158.2578125,
+        "station_count": 470.0,
+        "cluster_0_stations": 315.0,
+        "cluster_1_stations": 146.0,
+        "cluster_2_stations": 9.0
+      },
+      "run_manifest": {
+        "data_version": "129a4a57efc7",
+        "start_month": "2026-01",
+        "end_month": "2026-09",
+        "complete": true,
+        "n_trips": 3361307,
+        "n_stations": 470
+      },
+      "candidate_ranking": [
+        {
+          "name": "P3_kmeans_3_station_usage_profiles",
+          "run_id": "412c05f247a547ba8939204208bc7d2f",
+          "metrics": {
+            "silhouette": 0.4506254494190216,
+            "calinski_harabasz": 263.9313033896931
+          }
+        },
+        {
+          "name": "P3_kmeans_4_station_usage_profiles",
+          "run_id": "0fd69012d8b745f3bc6b73240eaa180b",
+          "metrics": {
+            "silhouette": 0.37905824184417725,
+            "calinski_harabasz": 232.76515916149015
+          }
+        },
+        {
+          "name": "P3_kmeans_5_station_usage_profiles",
+          "run_id": "bb9e195ab4414f208fcb743ddcf6617a",
+          "metrics": {
+            "silhouette": 0.36382368206977844,
+            "calinski_harabasz": 200.89370627982973
+          }
+        },
+        {
+          "name": "P3_kmeans_6_station_usage_profiles",
+          "run_id": "29d8f3db63184606b89dd3744fa1e39b",
+          "metrics": {
+            "silhouette": 0.34033846855163574,
+            "calinski_harabasz": 175.38171953978272
+          }
+        }
+      ],
+      "signature": "inputs: \n  [Tensor('float32', (-1, 336))]\noutputs: \n  [Tensor('int32', (-1,))]\nparams: \n  None\n"
+    }
+  ],
+  "status": "PASS",
+  "scope": "Solo modelos solicitados; no certifica despliegue, CI/CD ni reproducción completa."
+}

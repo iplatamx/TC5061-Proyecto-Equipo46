@@ -9,6 +9,7 @@ def main():
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
     configurations = [
+        {"n_clusters": 3, "n_init": 10, "max_iter": 300},
         {"n_clusters": 4, "n_init": 10, "max_iter": 300},
         {"n_clusters": 5, "n_init": 10, "max_iter": 300},
         {"n_clusters": 6, "n_init": 10, "max_iter": 300},

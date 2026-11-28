@@ -1,0 +1,105 @@
+{
+  "generated_utc": "2026-11-27T17:16:48.400889+00:00",
+  "git_head": "574bb361f7ce732cb3dbbf7beb6c3717fb92d6e7",
+  "tracked_worktree_dirty": true,
+  "python": "3.11.9",
+  "mlflow": "3.6.0",
+  "local_manifest": {
+    "data_version": "d038fe16493d",
+    "complete": true,
+    "start_month": "2026-01",
+    "end_month": "2026-09",
+    "n_trips": 3361307,
+    "n_stations": 484
+  },
+  "models": [
+    {
+      "question": "P1",
+      "name": "mibici-equipo46-p1-demanda",
+      "alias": "champion",
+      "errors": [],
+      "warnings": [
+        "El manifiesto de trabajo difiere del histórico; se verifica el manifiesto del run, no se sustituye su hash."
+      ],
+      "aliases": {
+        "champion": "1"
+      },
+      "version": "1",
+      "status": "READY",
+      "run_id": "f097ad4116364c8fb6182562cdf685f7",
+      "data_version": "129a4a57efc7",
+      "selected_run": "P1-HGB-02",
+      "source_model_uri": "models:/m-a0c2d2829ffb4f5e9ec9b0fdd52e7a31",
+      "validation_status": "approved",
+      "run_name": "P1-HGB-02",
+      "run_status": "FINISHED",
+      "experiment_id": "1",
+      "git_commit": "33524611b5ec7f3db73884548becd4b6638eb1c0",
+      "params": {
+        "candidate": "P1-HGB-02",
+        "max_iter": "100",
+        "learning_rate": "0.08",
+        "max_leaf_nodes": "31",
+        "question": "P1",
+        "model": "hist_gradient_boosting",
+        "random_seed": "42",
+        "training_rows": "2160006",
+        "validation_rows": "462993",
+        "test_rows": "462993",
+        "data_version": "129a4a57efc7",
+        "train_target_start": "2026-01-01T01:00:00",
+        "train_target_end": "2026-07-11T02:00:00",
+        "validation_target_start": "2026-07-11T03:00:00",
+        "validation_target_end": "2026-08-21T01:00:00",
+        "test_target_start": "2026-08-21T02:00:00",
+        "test_target_end": "2026-10-01T00:00:00"
+      },
+      "metrics": {
+        "validation_mae": 0.7351930217572831,
+        "validation_rmse": 1.3070121208596446,
+        "validation_r2": 0.6707433977848813,
+        "test_mae": 0.8542780456894645,
+        "test_rmse": 1.5067933337950647,
+        "test_r2": 0.6789408995750218
+      },
+      "run_manifest": {
+        "data_version": "129a4a57efc7",
+        "start_month": "2026-01",
+        "end_month": "2026-09",
+        "complete": true,
+        "n_trips": 3361307,
+        "n_stations": 470
+      },
+      "candidate_ranking": [
+        {
+          "name": "P1-HGB-02",
+          "run_id": "f097ad4116364c8fb6182562cdf685f7",
+          "metrics": {
+            "validation_mae": 0.7351930217572831
+          }
+        },
+        {
+          "name": "P1-HGB-03",
+          "run_id": "8ce7acdcc5eb4794aa2cc3d0d61e1c9e",
+          "metrics": {
+            "validation_mae": 0.7361883121008237
+          }
+        },
+        {
+          "name": "P1-HGB-01",
+          "run_id": "f79b55b35f194ba8b1b641aab8af652f",
+          "metrics": {
+            "validation_mae": 0.7497573027221169
+          }
+        }
+      ],
+      "signature": "inputs: \n  ['station_id': float (required), 'departures_this_hour': float (required), 'arrivals_this_hour': float (required), 'departures_mean_last_24h': float (required), 'departures_mean_last_168h': float (required), 'target_hour': float (required), 'target_dayofweek': float (required), 'target_is_weekend': float (required)]\noutputs: \n  [Tensor('float64', (-1,))]\nparams: \n  None\n",
+      "prediction_sample": [
+        3.923333879487776
+      ],
+      "service_version": "1"
+    }
+  ],
+  "status": "PASS",
+  "scope": "Solo modelos solicitados; no certifica despliegue, CI/CD ni reproducción completa."
+}

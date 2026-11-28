@@ -1,0 +1,19 @@
+{
+  "despliegue_semana10": {
+    "server": "http://127.0.0.1:5000",
+    "sha256": "e91b00b4e6e08788cbd20d7fdf594b841ea55a9a79ef3c4710cc847c8066df14"
+  },
+  "historico_semana8": {
+    "server": "http://127.0.0.1:5001",
+    "sha256": "e91b00b4e6e08788cbd20d7fdf594b841ea55a9a79ef3c4710cc847c8066df14"
+  },
+  "proyecto_final": {
+    "server": "http://127.0.0.1:5002",
+    "sha256": "e91b00b4e6e08788cbd20d7fdf594b841ea55a9a79ef3c4710cc847c8066df14"
+  },
+  "comparison": {
+    "historical_vs_deployment": true,
+    "historical_vs_retrained": true,
+    "all_identical": true
+  }
+}
